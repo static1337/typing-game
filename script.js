@@ -54,7 +54,7 @@ const shipY = canvas.height - 40;
 
 class FallingWord {
     constructor() {
-        const pool = dictionary[selectedDifficulty];
+        const pool = dictionary[selectedDifficulty] || dictionary['easy'];
         this.text = pool[Math.floor(Math.random() * pool.length)];
         this.x = Math.max(50, Math.random() * (canvas.width - 150));
         this.y = -20;
@@ -95,7 +95,7 @@ class Laser {
 menuButtons.forEach(button => {
     button.addEventListener('click', () => {
         selectedDifficulty = button.getAttribute('data-diff');
-        startScreen.classList.add('hidden');
+        startScreen.style.display = 'none'; // Instantly dismiss menu graphic layout layer
         bgMusic.currentTime = 0; 
         bgMusic.play().catch(err => console.log("Audio playback blocked:", err));
         resetGame();
@@ -151,68 +151,77 @@ function endGame() {
     gameActive = false; 
     finalScoreElement.innerText = score; 
     bgMusic.pause();
-    
-    // Save score metrics and construct leaderboard display layout
     saveAndShowLeaderboard();
-    
-    gameOverScreen.classList.remove('hidden'); 
+    gameOverScreen.style.display = 'flex'; // Unveil full flex modal presentation structure
 }
 
 function saveAndShowLeaderboard() {
-    // 1. Fetch existing scores array framework from LocalStorage
     let localScores = JSON.parse(localStorage.getItem('ztype_high_scores')) || [];
-    
-    // 2. Insert current raw end-game score metrics configuration profile
     const currentRun = {
         value: score,
         difficulty: selectedDifficulty.toUpperCase(),
         date: new Date().toLocaleDateString()
     };
     localScores.push(currentRun);
-    
-    // 3. Sort structural array descending (highest to lowest)
     localScores.sort((a, b) => b.value - a.value);
-    
-    // 4. Clip structural array bounds to top 5 values max
     localScores = localScores.slice(0, 5);
-    
-    // 5. Commit structure profile safely to browser cache
     localStorage.setItem('ztype_high_scores', JSON.stringify(localScores));
     
-    // 6. Clear display box inner DOM elements and render newly compiled profiles
     scoreListElement.innerHTML = '';
     localScores.forEach((run, index) => {
         const li = document.createElement('li');
         li.className = 'score-item';
+        li.style.display = 'flex';
+        li.style.justifyContent = 'space-between';
+        li.style.margin = '5px 0';
         li.innerHTML = `
             <div>
-                <span class="score-rank">#${index + 1}</span> 
+                <span class="score-rank" style="color: #00ffcc; margin-right: 10px;">#${index + 1}</span> 
                 <span>${run.value}</span>
             </div>
-            <span class="score-diff">(${run.difficulty})</span>
+            <span class="score-diff" style="color: #ff3366;">(${run.difficulty})</span>
         `;
         scoreListElement.appendChild(li);
     });
 }
 
 function resetGame() {
-    const config = difficultySettings[selectedDifficulty];
-    baseSpeed = config.startSpeed; wordSpawnInterval = config.spawnRate; speedIncrement = config.scaling;
-    score = 0; fallingWords = []; lasers = []; targetWord = null; gameActive = true;
-    gameOverScreen.classList.add('hidden'); lastSpawnTime = performance.now();
-    requestAnimationFrame(gameLoop);
+    const config = difficultySettings[selectedDifficulty] || difficultySettings['easy'];
+    baseSpeed = config.startSpeed; 
+    wordSpawnInterval = config.spawnRate; 
+    speedIncrement = config.scaling;
+    score = 0; 
+    fallingWords = []; 
+    lasers = []; 
+    targetWord = null; 
+    gameActive = true;
+    gameOverScreen.style.display = 'none'; 
+    
+    // Normalize performance clock initialization to line up loop timestamps perfectly
+    requestAnimationFrame((timestamp) => {
+        lastSpawnTime = timestamp;
+        gameLoop(timestamp);
+    });
 }
 
 restartBtn.addEventListener('click', () => { 
-    gameOverScreen.classList.add('hidden'); startScreen.classList.remove('hidden'); 
+    gameOverScreen.style.display = 'none'; 
+    startScreen.style.display = 'flex'; 
 });
 
 function gameLoop(currentTime) {
     if (!gameActive) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (currentTime - lastSpawnTime > wordSpawnInterval) { fallingWords.push(new FallingWord()); lastSpawnTime = currentTime; }
-    lasers = lasers.filter(laser => laser.life > 0); lasers.forEach(laser => laser.draw());
+    
+    if (currentTime - lastSpawnTime > wordSpawnInterval) { 
+        fallingWords.push(new FallingWord()); 
+        lastSpawnTime = currentTime; 
+    }
+    
+    lasers = lasers.filter(laser => laser.life > 0); 
+    lasers.forEach(laser => laser.draw());
     fallingWords.forEach(word => { word.update(); word.draw(); });
-    drawShip(); drawScore();
+    drawShip(); 
+    drawScore();
     requestAnimationFrame(gameLoop);
 }
