@@ -9,6 +9,11 @@ const menuButtons = document.querySelectorAll('.menu-btn');
 canvas.width = 600;
 canvas.height = 700;
 
+// Initialize Background Music Object Instance
+const bgMusic = new Audio('music.mp3');
+bgMusic.loop = true;      // Automatically restart track when it finishes
+bgMusic.volume = 0.35;    // Lowers volume to 35% so it acts as background audio
+
 let selectedDifficulty = 'easy';
 let score = 0;
 let baseSpeed = 0.4;
@@ -84,6 +89,11 @@ menuButtons.forEach(button => {
     button.addEventListener('click', () => {
         selectedDifficulty = button.getAttribute('data-diff');
         startScreen.classList.add('hidden');
+        
+        // Music Trigger: Safely start song loop right on menu selection click
+        bgMusic.currentTime = 0; // Rewind track to start
+        bgMusic.play().catch(err => console.log("Audio playback blocked by browser:", err));
+        
         resetGame();
     });
 });
@@ -134,7 +144,14 @@ function drawScore() {
     ctx.fillText(`SCORE: ${score} (${selectedDifficulty.toUpperCase()})`, 20, 30);
 }
 
-function endGame() { gameActive = false; finalScoreElement.innerText = score; gameOverScreen.classList.remove('hidden'); }
+function endGame() { 
+    gameActive = false; 
+    finalScoreElement.innerText = score; 
+    gameOverScreen.classList.remove('hidden'); 
+    
+    // Music Event: Stop playing track immediately on death screen display
+    bgMusic.pause();
+}
 
 function resetGame() {
     const config = difficultySettings[selectedDifficulty];
@@ -144,7 +161,10 @@ function resetGame() {
     requestAnimationFrame(gameLoop);
 }
 
-restartBtn.addEventListener('click', () => { gameOverScreen.classList.add('hidden'); startScreen.classList.remove('hidden'); });
+restartBtn.addEventListener('click', () => { 
+    gameOverScreen.classList.add('hidden'); 
+    startScreen.classList.remove('hidden'); 
+});
 
 function gameLoop(currentTime) {
     if (!gameActive) return;
