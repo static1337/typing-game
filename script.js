@@ -1,0 +1,215 @@
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const startScreen = document.getElementById('start-screen');
+const gameOverScreen = document.getElementById('game-over-screen');
+const finalScoreElement = document.getElementById('final-score');
+const restartBtn = document.getElementById('restart-btn');
+const menuButtons = document.querySelectorAll('.menu-btn');
+
+canvas.width = 600;
+canvas.height = 700;
+
+// Game Tracking Profiles
+let selectedDifficulty = 'easy';
+let score = 0;
+let baseSpeed = 0.4;
+let wordSpawnInterval = 3500;
+let speedIncrement = 0.01;
+let lastSpawnTime = 0;
+let gameActive = false; // Game stays paused until a button triggers it
+
+let fallingWords = [];
+let lasers = [];
+let targetWord = null;
+
+// Categorized Word Engine Bank
+const dictionary = {
+    easy: ["cat", "dog", "run", "sky", "blue", "ship", "laser", "star", "fire", "moon", "orbit"],
+    medium: ["galaxy", "nebula", "meteor", "rocket", "quantum", "gravity", "vector", "matrix", "arcade"],
+    hard: ["syntactical", "atmospheric", "gravitational", "astrophysics", "exoplanetary", "supernova"]
+};
+
+// Difficulty Configurations
+const difficultySettings = {
+    easy: { startSpeed: 0.4, spawnRate: 3500, scaling: 0.01 },
+    medium: { startSpeed: 0.8, spawnRate: 2200, scaling: 0.03 },
+    hard: { startSpeed: 1.3, spawnRate: 1400, scaling: 0.06 }
+};
+
+const shipX = canvas.width / 2;
+const shipY = canvas.height - 40;
+
+class FallingWord {
+    constructor() {
+        // Pull text exclusively from current mode profile dictionary
+        const pool = dictionary[selectedDifficulty];
+        this.text = pool[Math.floor(Math.random() * pool.length)];
+        this.x = Math.max(50, Math.random() * (canvas.width - 150));
+        this.y = -20;
+        this.speed = baseSpeed + Math.random() * 0.2;
+        this.typedIndex = 0;
+    }
+
+    update() {
+        this.y += this.speed;
+        if (this.y > shipY - 10) {
+            endGame();
+        }
+    }
+
+    draw() {
+        ctx.font = "20px 'Courier New'";
+        ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+        ctx.fillText(this.text, this.x, this.y);
+
+        if (this.typedIndex > 0) {
+            ctx.fillStyle = "#00ffcc";
+            const typedText = this.text.substring(0, this.typedIndex);
+            ctx.fillText(typedText, this.x, this.y);
+        }
+    }
+}
+
+class Laser {
+    constructor(startX, startY, targetX, targetY) {
+        this.x = startX;
+        this.y = startY;
+        this.targetX = targetX;
+        this.targetY = targetY;
+        this.life = 5;
+    }
+
+    draw() {
+        if (this.life > 0) {
+            ctx.beginPath();
+            ctx.strokeStyle = "#ff3366";
+            ctx.lineWidth = 3;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "#ff3366";
+            ctx.moveTo(this.x, this.y);
+            ctx.lineTo(this.targetX, this.targetY);
+            ctx.stroke();
+            ctx.closePath();
+            ctx.shadowBlur = 0;
+            this.life--;
+        }
+    }
+}
+
+// Bind Difficulty Button Selection Event Listeners
+menuButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        selectedDifficulty = button.getAttribute('data-diff');
+        startScreen.classList.add('hidden');
+        resetGame();
+    });
+});
+
+window.addEventListener('keydown', (e) => {
+    if (!gameActive) return;
+    const pressedKey = e.key.toLowerCase();
+    if (pressedKey.length > 1) return;
+
+    if (targetWord === null) {
+        for (let word of fallingWords) {
+            if (word.text[0] === pressedKey) {
+                targetWord = word;
+                targetWord.typedIndex = 1;
+                fireLaser(targetWord.x + 10, targetWord.y);
+                checkWordCompletion();
+                break;
+            }
+        }
+    } else {
+        const expectedKey = targetWord.text[targetWord.typedIndex].toLowerCase();
+        if (pressedKey === expectedKey) {
+            targetWord.typedIndex++;
+            fireLaser(targetWord.x + (targetWord.typedIndex * 10), targetWord.y);
+            checkWordCompletion();
+        }
+    }
+});
+
+function fireLaser(tx, ty) {
+    lasers.push(new Laser(shipX, shipY, tx, ty));
+}
+
+function checkWordCompletion() {
+    if (targetWord && targetWord.typedIndex >= targetWord.text.length) {
+        score += targetWord.text.length * 10;
+        fallingWords = fallingWords.filter(w => w !== targetWord);
+        targetWord = null;
+
+        // Apply chosen configuration profile multiplier tracking variables
+        baseSpeed += speedIncrement;
+    }
+}
+
+function drawShip() {
+    ctx.beginPath();
+    ctx.fillStyle = "#3399ff";
+    ctx.moveTo(shipX, shipY - 15);
+    ctx.lineTo(shipX - 15, shipY + 15);
+    ctx.lineTo(shipX + 15, shipY + 15);
+    ctx.fill();
+    ctx.closePath();
+}
+
+function drawScore() {
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "16px 'Courier New'";
+    ctx.fillText(`SCORE: ${score} (${selectedDifficulty.toUpperCase()})`, 20, 30);
+}
+
+function endGame() {
+    gameActive = false;
+    finalScoreElement.innerText = score;
+    gameOverScreen.classList.remove('hidden');
+}
+
+function resetGame() {
+    // Map initial speeds directly using structural dictionary selectors
+    const config = difficultySettings[selectedDifficulty];
+    baseSpeed = config.startSpeed;
+    wordSpawnInterval = config.spawnRate;
+    speedIncrement = config.scaling;
+
+    score = 0;
+    fallingWords = [];
+    lasers = [];
+    targetWord = null;
+    gameActive = true;
+    gameOverScreen.classList.add('hidden');
+    lastSpawnTime = performance.now();
+    requestAnimationFrame(gameLoop);
+}
+
+// Route back to selection page instead of immediate restart loops
+restartBtn.addEventListener('click', () => {
+    gameOverScreen.classList.add('hidden');
+    startScreen.classList.remove('hidden');
+});
+
+function gameLoop(currentTime) {
+    if (!gameActive) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (currentTime - lastSpawnTime > wordSpawnInterval) {
+        fallingWords.push(new FallingWord());
+        lastSpawnTime = currentTime;
+    }
+
+    lasers = lasers.filter(laser => laser.life > 0);
+    lasers.forEach(laser => laser.draw());
+
+    fallingWords.forEach(word => {
+        word.update();
+        word.draw();
+    });
+
+    drawShip();
+    drawScore();
+
+    requestAnimationFrame(gameLoop);
+}
