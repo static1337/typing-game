@@ -22,11 +22,15 @@
         <canvas id="gameCanvas"></canvas>
         
         <div id="game-over-screen" class="hidden">
-            <h1>GAME OVER</h1>
-            <p>Your Score: <span id="final-score">0</span></p>
-            <button id="restart-btn">Play Again</button>
-        </div>
+    <h1>GAME OVER</h1>
+    <p>Your Score: <span id="final-score">0</span></p>
+    
+    <!-- LEADERBOARD CONTAINER -->
+    <div class="leaderboard-box">
+        <h3>Local High Scores</h3>
+        <ol id="score-list" class="score-list"></ol>
     </div>
-    <script src="script.js"></script>
-</body>
-</html>
+    
+    <button id="restart-btn">Play Again</button>
+</div>
+
