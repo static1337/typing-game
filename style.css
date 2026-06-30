@@ -145,3 +145,9 @@ button[data-diff="hard"]:hover { border-color: #f38ba8; background-color: #f38ba
     font-size: 0.8rem;
 }
 
+/* Core system utility class to manage interface rendering states */
+.hidden {
+    display: none !important;
+}
+
+
