@@ -3,6 +3,7 @@ const ctx = canvas.getContext('2d');
 const startScreen = document.getElementById('start-screen');
 const gameOverScreen = document.getElementById('game-over-screen');
 const finalScoreElement = document.getElementById('final-score');
+const scoreListElement = document.getElementById('score-list');
 const restartBtn = document.getElementById('restart-btn');
 const menuButtons = document.querySelectorAll('.menu-btn');
 
@@ -11,8 +12,8 @@ canvas.height = 700;
 
 // Initialize Background Music Object Instance
 const bgMusic = new Audio('music.mp3');
-bgMusic.loop = true;      // Automatically restart track when it finishes
-bgMusic.volume = 0.35;    // Lowers volume to 35% so it acts as background audio
+bgMusic.loop = true;      
+bgMusic.volume = 0.35;    
 
 let selectedDifficulty = 'easy';
 let score = 0;
@@ -30,22 +31,17 @@ const dictionary = {
     easy: [
         "cat", "dog", "run", "sky", "blue", "ship", "laser", "star", "fire", "moon", "orbit",
         "game", "code", "space", "blast", "speed", "fast", "type", "keys", "text", "planet",
-        "alien", "solar", "comet", "beam", "glow", "neon", "jump", "wave", "time", "score",
-        "play", "word", "hand", "mind", "epic", "zone", "void", "core", "grid", "rank", "apex"
+        "alien", "solar", "comet", "beam", "glow", "neon", "jump", "wave", "time", "score"
     ],
     medium: [
         "galaxy", "nebula", "meteor", "rocket", "quantum", "gravity", "vector", "matrix", "arcade",
-        "computer", "keyboard", "software", "internet", "database", "variable", "function", "universe",
-        "asteroid", "satellite", "astronaut", "telescope", "blackhole", "shuttle", "thruster", "velocity",
-        "accuracy", "terminal", "protocol", "compiler", "hardware", "pixel", "graphics", "engine"
+        "computer", "keyboard", "software", "internet", "database", "variable", "function", "universe"
     ],
     hard: [
         "syntactical", "atmospheric", "gravitational", "astrophysics", "exoplanetary", "supernova",
-        "constellation", "interstellar", "cryptography", "cybersecurity", "development", "programming",
-        "synchronous", "asynchronous", "optimization", "architecture", "juxtaposition", "stratosphere"
+        "constellation", "interstellar", "cryptography", "cybersecurity", "development", "programming"
     ]
 };
-
 
 const difficultySettings = {
     easy: { startSpeed: 0.4, spawnRate: 3500, scaling: 0.01 },
@@ -89,12 +85,8 @@ class Laser {
     }
     draw() {
         if (this.life > 0) {
-            ctx.beginPath();
-            ctx.strokeStyle = "#ff3366";
-            ctx.lineWidth = 3;
-            ctx.moveTo(this.x, this.y);
-            ctx.lineTo(this.targetX, this.targetY);
-            ctx.stroke();
+            ctx.beginPath(); ctx.strokeStyle = "#ff3366"; ctx.lineWidth = 3;
+            ctx.moveTo(this.x, this.y); ctx.lineTo(this.targetX, this.targetY); ctx.stroke();
             this.life--;
         }
     }
@@ -104,11 +96,8 @@ menuButtons.forEach(button => {
     button.addEventListener('click', () => {
         selectedDifficulty = button.getAttribute('data-diff');
         startScreen.classList.add('hidden');
-        
-        // Music Trigger: Safely start song loop right on menu selection click
-        bgMusic.currentTime = 0; // Rewind track to start
-        bgMusic.play().catch(err => console.log("Audio playback blocked by browser:", err));
-        
+        bgMusic.currentTime = 0; 
+        bgMusic.play().catch(err => console.log("Audio playback blocked:", err));
         resetGame();
     });
 });
@@ -121,8 +110,7 @@ window.addEventListener('keydown', (e) => {
     if (targetWord === null) {
         for (let word of fallingWords) {
             if (word.text.startsWith(pressedKey)) {
-                targetWord = word;
-                targetWord.typedIndex = 1;
+                targetWord = word; targetWord.typedIndex = 1;
                 fireLaser(targetWord.x + 10, targetWord.y);
                 checkWordCompletion();
                 break;
@@ -162,10 +150,49 @@ function drawScore() {
 function endGame() { 
     gameActive = false; 
     finalScoreElement.innerText = score; 
-    gameOverScreen.classList.remove('hidden'); 
-    
-    // Music Event: Stop playing track immediately on death screen display
     bgMusic.pause();
+    
+    // Save score metrics and construct leaderboard display layout
+    saveAndShowLeaderboard();
+    
+    gameOverScreen.classList.remove('hidden'); 
+}
+
+function saveAndShowLeaderboard() {
+    // 1. Fetch existing scores array framework from LocalStorage
+    let localScores = JSON.parse(localStorage.getItem('ztype_high_scores')) || [];
+    
+    // 2. Insert current raw end-game score metrics configuration profile
+    const currentRun = {
+        value: score,
+        difficulty: selectedDifficulty.toUpperCase(),
+        date: new Date().toLocaleDateString()
+    };
+    localScores.push(currentRun);
+    
+    // 3. Sort structural array descending (highest to lowest)
+    localScores.sort((a, b) => b.value - a.value);
+    
+    // 4. Clip structural array bounds to top 5 values max
+    localScores = localScores.slice(0, 5);
+    
+    // 5. Commit structure profile safely to browser cache
+    localStorage.setItem('ztype_high_scores', JSON.stringify(localScores));
+    
+    // 6. Clear display box inner DOM elements and render newly compiled profiles
+    scoreListElement.innerHTML = '';
+    localScores.forEach((run, index) => {
+        const li = document.createElement('li');
+        li.className = 'score-item';
+        li.innerHTML = `
+            <div>
+                <span class="score-rank">#${index + 1}</span> 
+                <span>${run.value}</span>
+            </div>
+            <span class="score-diff">(${run.difficulty})</span>
+        `;
+        scoreListElement.appendChild(li);
+    });
 }
 
 function resetGame() {
@@ -177,8 +204,7 @@ function resetGame() {
 }
 
 restartBtn.addEventListener('click', () => { 
-    gameOverScreen.classList.add('hidden'); 
-    startScreen.classList.remove('hidden'); 
+    gameOverScreen.classList.add('hidden'); startScreen.classList.remove('hidden'); 
 });
 
 function gameLoop(currentTime) {
